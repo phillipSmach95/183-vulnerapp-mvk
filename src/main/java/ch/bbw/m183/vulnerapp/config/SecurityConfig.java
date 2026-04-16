@@ -1,9 +1,10 @@
 package ch.bbw.m183.vulnerapp.config;
 
 import ch.bbw.m183.vulnerapp.repository.UserRepository;
+import ch.bbw.m183.vulnerapp.service.RestfulFormService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.config.Customizer;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -20,7 +21,7 @@ public class SecurityConfig {
     public UserDetailsService userDetailsService(UserRepository userRepository) {
         return username -> userRepository.findById(username)
                 .map(userEntity -> User.withUsername(userEntity.getUsername())
-                        .password(userEntity.getPassword())
+                        .password(passwordEncoder().encode(userEntity.getPassword()))
                         .roles("USER")
                         .build())
                 .orElseThrow(() -> new RuntimeException("User not found: " + username));
@@ -32,15 +33,19 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) {
+    public SecurityFilterChain filterChain(HttpSecurity http, RestfulFormService restfulFormService) {
         return http
                 .csrf(AbstractHttpConfigurer::disable)
+                .formLogin(restfulFormService.restfulFormLogin())
+                .exceptionHandling(restfulFormService.unauthorizedPerDefault())
                 .authorizeHttpRequests(request ->
                         request
-                                .requestMatchers("/api/**").authenticated()
-                                .requestMatchers("/api/blog/**").hasRole("BLOGGER")
-                                .anyRequest().permitAll())
-                .httpBasic(Customizer.withDefaults())
+                                .requestMatchers(HttpMethod.GET, "/api/blog/**")
+                                .permitAll()
+                                .requestMatchers("/api/**")
+                                .authenticated()
+                                .anyRequest()
+                                .permitAll())
                 .build();
 
 
