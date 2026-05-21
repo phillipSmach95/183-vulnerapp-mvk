@@ -15,11 +15,13 @@ let devToast = new bootstrap.Toast(
 function onLoginSubmit(event) {
   const username = event.target[0].value;
   const password = event.target[1].value;
+  getCsrfToken();
   event.preventDefault();
   fetch("/login", {
     method: "POST",
     headers: {
       "Content-Type": "application/x-www-form-urlencoded",
+      "X-XSRF-TOKEN": getCsrfToken(), // Updated header name
     },
     body: new URLSearchParams({username, password}),
   })
@@ -28,7 +30,16 @@ function onLoginSubmit(event) {
       .then(user => window.sessionStorage.setItem("fullname", user.fullname))
       .then(() => loginCheck());
 }
-
+function getCsrfToken() {
+  const cookies = document.cookie.split("; ");
+  for (const cookie of cookies) {
+    const [key, value] = cookie.split("=");
+    if (key === "XSRF-TOKEN") {
+      return decodeURIComponent(value);
+    }
+  }
+  return null;
+}
 function onLogoutSubmit(event) {
   event.preventDefault();
   window.sessionStorage.removeItem("fullname");
@@ -37,11 +48,13 @@ function onLogoutSubmit(event) {
 
 function onBlogSubmit(event) {
   const data = {"title": event.target[0].value, "body": event.target[1].value};
+  const csrfToken = getCsrfToken();
   event.preventDefault();
   fetch("/api/blog", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      "X-XSRF-TOKEN": csrfToken, // Updated header name
     },
     body: JSON.stringify(data),
   })
